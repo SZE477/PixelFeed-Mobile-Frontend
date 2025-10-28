@@ -95,54 +95,73 @@ export interface UserProfileData {
 }
 
 // ============================================
-// TOKEN MANAGEMENT
+// TOKEN MANAGEMENT (separate access & refresh)
 // ============================================
 
-const TOKEN_KEY = '@pixelfeed_auth_token';
+const ACCESS_TOKEN_KEY = '@pixelfeed_access_token';
+const REFRESH_TOKEN_KEY = '@pixelfeed_refresh_token';
 
 export const tokenManager = {
-  /**
-   * Save authentication token to AsyncStorage
-   * @param token - The authentication token to save
-   */
-  saveToken: async (token: string): Promise<void> => {
+  // Access token helpers
+  saveAccessToken: async (token: string): Promise<void> => {
     try {
-      await AsyncStorage.setItem(TOKEN_KEY, token);
-      console.log('✅ Token saved successfully');
+      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, token);
+      console.log('✅ Access token saved successfully');
     } catch (error) {
-      console.error('❌ Error saving token:', error);
+      console.error('❌ Error saving access token:', error);
       throw error;
     }
   },
 
-  /**
-   * Retrieve authentication token from AsyncStorage
-   * @returns The stored token or null if not found
-   */
-  getToken: async (): Promise<string | null> => {
+  getAccessToken: async (): Promise<string | null> => {
     try {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
+      const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
       if (token) {
-        console.log('✅ Token retrieved successfully');
+        console.log('✅ Access token retrieved successfully');
       } else {
-        console.log('⚠️ No token found');
+        console.log('⚠️ No access token found');
       }
       return token;
     } catch (error) {
-      console.error('❌ Error getting token:', error);
+      console.error('❌ Error getting access token:', error);
       return null;
     }
   },
 
-  /**
-   * Remove authentication token from AsyncStorage
-   */
-  clearToken: async (): Promise<void> => {
+  // Refresh token helpers
+  saveRefreshToken: async (token: string): Promise<void> => {
     try {
-      await AsyncStorage.removeItem(TOKEN_KEY);
-      console.log('✅ Token cleared successfully');
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+      console.log('✅ Refresh token saved successfully');
     } catch (error) {
-      console.error('❌ Error clearing token:', error);
+      console.error('❌ Error saving refresh token:', error);
+      throw error;
+    }
+  },
+
+  getRefreshToken: async (): Promise<string | null> => {
+    try {
+      const token = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+      if (token) {
+        console.log('✅ Refresh token retrieved successfully');
+      } else {
+        console.log('⚠️ No refresh token found');
+      }
+      return token;
+    } catch (error) {
+      console.error('❌ Error getting refresh token:', error);
+      return null;
+    }
+  },
+
+  // Clear both tokens
+  clearTokens: async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+      await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+      console.log('✅ Tokens cleared successfully');
+    } catch (error) {
+      console.error('❌ Error clearing tokens:', error);
       throw error;
     }
   },
@@ -168,8 +187,8 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      // Retrieve token from AsyncStorage
-      const token = await tokenManager.getToken();
+  // Retrieve access token from AsyncStorage
+  const token = await tokenManager.getAccessToken();
 
       if (token) {
         // Add Bearer token to Authorization header
@@ -212,8 +231,8 @@ api.interceptors.response.use(
 
       // Handle 401 Unauthorized - Token expired or invalid
       if (status === 401) {
-        await tokenManager.clearToken();
-        console.log('🔓 Unauthorized - Token cleared. User needs to log in again.');
+        await tokenManager.clearTokens();
+        console.log('🔓 Unauthorized - Tokens cleared. User needs to log in again.');
         
         // You can dispatch a logout action or navigate to login here
         // Example: store.dispatch(logout());
@@ -267,15 +286,18 @@ export const login = async (
     );
 
 
-    // Save access token after successful login
+    // Save access & refresh tokens after successful login
     if (response.data.access) {
-      await tokenManager.saveToken(response.data.access);
-      // Immediately check if token is available after saving
-      const savedToken = await tokenManager.getToken();
+      await tokenManager.saveAccessToken(response.data.access);
+      if (response.data.refresh) {
+        await tokenManager.saveRefreshToken(response.data.refresh);
+      }
+      // Immediately check if access token is available after saving
+      const savedToken = await tokenManager.getAccessToken();
       if (savedToken) {
         console.log('✅ Login successful, access token saved and verified:', savedToken.substring(0, 20) + '...');
       } else {
-        console.error('❌ Token was not found after saving!');
+        console.error('❌ Access token was not found after saving!');
       }
     } else {
       console.warn('⚠️ Login succeeded but no access token received');
@@ -356,7 +378,7 @@ export const logout = async (): Promise<void> => {
     console.error('❌ Logout API error:', error);
   } finally {
     // Always clear token locally
-    await tokenManager.clearToken();
+    await tokenManager.clearTokens();
     console.log('✅ Local logout complete');
   }
 };
@@ -452,7 +474,7 @@ export const getCurrentUserProfile = async (): Promise<UserProfileData> => {
  * Check if user is authenticated by verifying token existence
  */
 export const isAuthenticated = async (): Promise<boolean> => {
-  const token = await tokenManager.getToken();
+  const token = await tokenManager.getAccessToken();
   const authenticated = token !== null;
   
   console.log(authenticated ? '✅ User is authenticated' : '❌ User is not authenticated');
@@ -471,7 +493,7 @@ export const verifyToken = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.log('❌ Token is invalid or expired');
-    await tokenManager.clearToken();
+    await tokenManager.clearTokens();
     return false;
   }
 };

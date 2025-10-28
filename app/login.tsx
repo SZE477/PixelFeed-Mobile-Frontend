@@ -36,8 +36,8 @@ const LoginScreen: React.FC = () => {
       try {
         const result = await login(values);
         console.log('Login successful:', result);
-        // Check token after login
-        const token = await import('@/services/api').then(m => m.tokenManager.getToken());
+  // Check access token after login
+  const token = await import('@/services/api').then(m => m.tokenManager.getAccessToken());
         console.log('Token after login:', token);
         // Redirect to homepage after successful login
         router.replace('/homepage');
