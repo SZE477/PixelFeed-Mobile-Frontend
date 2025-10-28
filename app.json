@@ -25,6 +25,7 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "proxy": "http://127.0.0.1:8000",
     "plugins": [
       "expo-router",
       [
