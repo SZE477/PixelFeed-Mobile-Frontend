@@ -1,6 +1,7 @@
 // services/api.ts
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Linking } from 'react-native';
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
@@ -124,9 +125,13 @@ api.interceptors.request.use(
   async (config) => {
     try {
       const token = await tokenManager.getToken();
+      console.log('Retrieved Token:', token); // Debugging log
       if (token) {
         config.headers.Authorization = `Token ${token}`;
         // Use 'Bearer' if your backend uses JWT: `Bearer ${token}`
+      } else {
+        // Redirect to login page using Linking
+        Linking.openURL('/');
       }
     } catch (error) {
       console.error('Error in request interceptor:', error);
@@ -250,6 +255,17 @@ export const getUserProfile = async (username: string): Promise<UserProfile> => 
     throw new Error(
       error.response?.data?.message || 
       'Failed to fetch user profile.'
+    );
+  }
+};
+
+export const getCurrentUserProfile = async (): Promise<UserProfile> => {
+  try {
+    const response = await api.get<UserProfile>('/accounts/me/');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || 'Failed to fetch current user profile.'
     );
   }
 };
