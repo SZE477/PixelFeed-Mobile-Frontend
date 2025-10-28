@@ -3,15 +3,15 @@ import { useRouter } from 'expo-router';
 import { useFormik } from 'formik';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import * as Yup from 'yup';
 
@@ -36,6 +36,9 @@ const LoginScreen: React.FC = () => {
       try {
         const result = await login(values);
         console.log('Login successful:', result);
+        // Check token after login
+        const token = await import('@/services/api').then(m => m.tokenManager.getToken());
+        console.log('Token after login:', token);
         // Redirect to homepage after successful login
         router.replace('/homepage');
       } catch (error) {
